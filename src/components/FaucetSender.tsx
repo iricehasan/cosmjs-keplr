@@ -2,6 +2,7 @@ import { ChangeEvent, Component, MouseEvent } from "react"
 import { Coin, SigningStargateClient, StargateClient } from "@cosmjs/stargate"
 import styles from '../styles/Home.module.css'
 import { ChainInfo, Window as KeplrWindow } from "@keplr-wallet/types"
+import { AccountData, OfflineSigner } from "@cosmjs/proto-signing"
 
 declare global {
     interface Window extends KeplrWindow {}
@@ -64,6 +65,52 @@ export class FaucetSender extends Component<FaucetSenderProps, FaucetSenderState
             alert("You need to install or unlock Keplr")
             return
         }
+
+       // Get the current state and amount of tokens that we want to transfer
+       const { denom, toSend } = this.state
+       const { faucetAddress, rpcUrl } = this.props
+       // Suggest the testnet chain to Keplr
+       await keplr.experimentalSuggestChain(this.getTestnetChainInfo())
+       // Create the signing client
+       const offlineSigner: OfflineSigner =
+           window.getOfflineSigner!("theta-testnet-001")
+       const signingClient = await SigningStargateClient.connectWithSigner(
+           rpcUrl,
+           offlineSigner,
+       )
+       // Get the address and balance of your user
+       const account: AccountData = (await offlineSigner.getAccounts())[0]
+       this.setState({
+           myAddress: account.address,
+           myBalance: (await signingClient.getBalance(account.address, denom))
+               .amount,
+       })
+       // Submit the transaction to send tokens to the faucet
+       const sendResult = await signingClient.sendTokens(
+           account.address,
+           faucetAddress,
+           [
+               {
+                   denom: denom,
+                   amount: toSend,
+               },
+           ],
+           {
+               amount: [{ denom: "uatom", amount: "500" }],
+               gas: "200000",
+           },
+       )
+       // Print the result to the console
+       console.log(sendResult)
+       // Update the balance in the user interface
+       this.setState({
+           myBalance: (await signingClient.getBalance(account.address, denom))
+               .amount,
+           faucetBalance: (
+               await signingClient.getBalance(faucetAddress, denom)
+           ).amount,
+       })
+
     }
 
     getTestnetChainInfo = (): ChainInfo => ({
