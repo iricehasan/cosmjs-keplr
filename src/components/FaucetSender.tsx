@@ -1,6 +1,11 @@
 import { ChangeEvent, Component, MouseEvent } from "react"
 import { Coin, SigningStargateClient, StargateClient } from "@cosmjs/stargate"
 import styles from '../styles/Home.module.css'
+import { Window as KeplrWindow } from "@keplr-wallet/types";
+
+declare global {
+    interface Window extends KeplrWindow {}
+}
 
 interface FaucetSenderState {
     denom: string
@@ -54,7 +59,11 @@ export class FaucetSender extends Component<FaucetSenderProps, FaucetSenderState
 
     // When the user clicks the "send to faucet button"
     onSendClicked = async(e: MouseEvent<HTMLButtonElement>) => {
-        alert("TODO")
+        const { keplr } = window
+        if (!keplr) {
+            alert("You need to install or unlock Keplr")
+            return
+        }
     }
 
     // The render function that draws the component at init and at state change
